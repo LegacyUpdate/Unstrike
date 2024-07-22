@@ -1,10 +1,20 @@
+# Unstrike 1.0.1 - https://legacyupdate.net/unstrike
+#
+# Apache License 2.0
+#
+# This software is provided "as is" and without any express or implied warranties, including,
+# without limitation, the implied warranties of merchantability and fitness for a particular
+# purpose. Use of this software is at your own risk.
+
 Add-Type -AssemblyName PresentationFramework, System.Windows.Forms
+
+$version = "1.0.1"
 
 $esc = [char]27
 $batchFile = @"
 @echo off
 setlocal enabledelayedexpansion
-title Unstrike 1.0 - legacyupdate.net
+title Unstrike $version - legacyupdate.net
 
 echo.
 echo $esc[1;46;38m Unstrike $esc[m
@@ -195,7 +205,7 @@ function Show-Dialog {
 				</Grid.ColumnDefinitions>
 
 				<TextBlock Grid.Column="0">
-					Unstrike 1.0.1 - <Hyperlink x:Name="btnLegacyUpdate">legacyupdate.net</Hyperlink>
+					Unstrike $version - <Hyperlink x:Name="btnLegacyUpdate">legacyupdate.net</Hyperlink>
 				</TextBlock>
 
 				<Button x:Name="btnBuild" Grid.Column="2" Width="75" Margin="0, 0, 10, 0">Build</Button>
@@ -478,8 +488,8 @@ Show-Dialog
 # SIG # Begin signature block
 # MIIRRgYJKoZIhvcNAQcCoIIRNzCCETMCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCC+9mxJmjvlmD7I
-# RlrqxHSxqloP+6BnAFdo+tXWdLdqcKCCDYAwgga5MIIEoaADAgECAhEAmaOACiZV
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBr2xKb8feZnYM+
+# yopALZlq96QqfLMNawehWFyMSDaHeqCCDYAwgga5MIIEoaADAgECAhEAmaOACiZV
 # O2Wr3G6EprPqOTANBgkqhkiG9w0BAQwFADCBgDELMAkGA1UEBhMCUEwxIjAgBgNV
 # BAoTGVVuaXpldG8gVGVjaG5vbG9naWVzIFMuQS4xJzAlBgNVBAsTHkNlcnR1bSBD
 # ZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTEkMCIGA1UEAxMbQ2VydHVtIFRydXN0ZWQg
@@ -556,17 +566,17 @@ Show-Dialog
 # BAMTG0NlcnR1bSBDb2RlIFNpZ25pbmcgMjAyMSBDQQIQD3Ey8ryELmCitwfJTY0i
 # STANBglghkgBZQMEAgEFAKCBhDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAAMBkG
 # CSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgorBgEE
-# AYI3AgEVMC8GCSqGSIb3DQEJBDEiBCBNpPs3PNVOXD8ZOh49R4M495LfpEqjifsb
-# FHuGE0DPHTANBgkqhkiG9w0BAQEFAASCAgBPV0HyNibL7h91vFbMrWq4dt9J+Ht/
-# nAijFnRbWZFqR8I0BdeFld4hqS/EzS+uQPdBN26LSCUWEFU42Zf5LjBgeyaknnhe
-# UdBq71enz5pHrkz/xqEz2620AU2PzRTDDdim67LQiILHRMfd+tgmuqe6wzIbgqk6
-# TM+nyKDMU1rxIT4AL1thkOX2mO6Sb+uCMaOndWjgsdpMHkDbc53+2vonaC0mwztC
-# 2ibUN0kNbBS2/gNB7nyt8yyEEgcOcNS7t8X9Ns23kVYQytFNBIu3AI3eIm/do8Ac
-# vo/tOCCJKuMZHo8L9tIXVowWK7uZTzxfoa9qzijfllG3/gqF/nZfhpz2UMZoyMXu
-# FSaHlD+jqxiFkZxobtymkFW9Dxo4iYwIq0tuZ1DYEan4GrmzS4J0rXmZ2pAOC+l4
-# r/PWC6WgYoeB93pZ0xQJXEAhovFYaKGj5IFO4Sqd42wVwYfIzRFgw8Xz1PlTdweS
-# fOUh2WNwVzmXyrEaOknNRB1dpIfA6fjXGGicYBKl2uS8XHZR9phXR69t/9jJ1Lm+
-# wkpp+xPdp028XTUSacMOeL23BYo+vAQdZQU4IQUS9akZyACzWEhu1nlPkIVOEkoc
-# EsoN4jnjsgCEhm1Yhwpo+S9ctP/psdet3cDlI4ooxUehh+pgbJhjC7TpGTdv1qEJ
-# rcRycZ47qMm2nA==
+# AYI3AgEVMC8GCSqGSIb3DQEJBDEiBCAJsKDlKY2LOTx89y2aDpDwsyvQrAjtWLhq
+# PwK3nd7hozANBgkqhkiG9w0BAQEFAASCAgBWzAxJL7SlNMl0hKKRhpBsLhp1Z+tv
+# 3BxtQ05IQ0Sh/HGYKzLRzonqVN4osN4gsX/8Q1tJGjKcCV+kUOPk94ibujv1xBWx
+# 7utCp19s2NrrJ+NHwuOhFBl83ynNNwnU/0mFq979R5SiQEIg/lErm6WgUkakWUmP
+# TTJzIKxO7k+T6qUEbADWksGFjIQhOJu5Y7PrRnu3PaNIs7xCdWdMYYRsy7akeHOX
+# PGuFjldGB4yT701etKcQIsyrO/96WJ10mhab9kQurpWjFIx3BrfVV3Ox67uPiPoR
+# go2/9EMC13Wyl/bjHIqhNM3ua85TbiavJdbBtGYrATTWc8bOUAMSxADUz+9oXtNW
+# P6+9aG08AOJBzTsYxo33vZt+VFp3zTFVIonxyUOZ85H63DQ/scyQLTk7jsqB9vd9
+# 91CBfbmMA06DHQ6ITt6RuzB8CWApGcZdJRgukmaomPogYhhEhxRSrumiHIOweePv
+# /IZ2lTVQ9AnFwdo2yHUNi1Hc6rdXVteL8Y4QYxdR/+Xqw+nxzpkshFNVSwwpECb3
+# edmu73ntV0TNtgn8ABpRb93zpJDxfj8AL8sr16hUj3FoKotqSF2g9rrT3RYrlrE4
+# 46y9imjRYZoN/u+Zabxo/VjNZ6FuZ1qpPRBXmPis0gWMRma0ZZRETPAIY+GDJCbn
+# bgbxM1ZQYLlf2w==
 # SIG # End signature block
