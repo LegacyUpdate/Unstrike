@@ -1,5 +1,4 @@
-Add-Type -AssemblyName PresentationFramework
-Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName PresentationFramework, System.Windows.Forms
 
 $esc = [char]27
 $batchFile = @"
@@ -21,7 +20,7 @@ start /min
 for %%i in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (
 	:: Check if the volume exists at all
 	manage-bde -status %%i: >nul
-	if %errorlevel% equ -1 (continue)
+	if %errorlevel% equ -1 continue
 
 	:: Check if the volume contains Windows
 	if exist %%i:\Windows\System32 (
@@ -110,7 +109,15 @@ echo Disconnect the USB drive and press any key to restart.
 pause
 "@
 
-$StatusLabel = $null
+$winpeshlIni = @"
+[LaunchApp]
+AppPath = %SYSTEMDRIVE%\unstrike.cmd
+"@
+
+$mkisofs = "$PSScriptRoot\mkisofs.exe"
+
+$Window = $null
+$Progress = 0
 
 function Show-Dialog {
 	[xml]$xaml = @"
@@ -119,7 +126,8 @@ function Show-Dialog {
 				Title="Unstrike"
 				Width="500"
 				SizeToContent="Height"
-				ResizeMode="CanMinimize">
+				ResizeMode="CanMinimize"
+				WindowStartupLocation="CenterScreen">
 	<StackPanel Orientation="Vertical">
 		<Grid Width="500" Height="65">
 			<Rectangle Width="500" Height="65">
@@ -131,23 +139,18 @@ function Show-Dialog {
 				</Rectangle.Fill>
 			</Rectangle>
 
-			<StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-				<TextBlock FontWeight="Medium" FontSize="35" TextAlignment="Center" VerticalAlignment="Center" LineHeight="1">
-					Unstrike
-				</TextBlock>
-			</StackPanel>
-
-			<Line X1="0" Y1="64" X2="500" Y2="64" Stroke="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}" StrokeThickness="0.5" />
+			<TextBlock FontWeight="Medium" FontSize="35" TextAlignment="Center" VerticalAlignment="Center">
+				Unstrike
+			</TextBlock>
 		</Grid>
 
+		<Line X2="500" Stroke="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}" StrokeThickness="1" />
+
 		<TextBlock Margin="15" TextWrapping="Wrap">
-			Unstrike can automatically rescue a Windows 10 or 11 installation that has been affected by the 19 July 2024 CrowdStrike Falcon content update error. This tool will create a new ISO file that can be copied to a USB drive using software such as <Hyperlink x:Name="btnRufus">Rufus</Hyperlink>.
+			Unstrike can automatically rescue a Windows installation that has been affected by the 19 July 2024 CrowdStrike Falcon content update error. This tool will create a new ISO file that can be copied to a USB drive using software such as <Hyperlink x:Name="btnRufus">Rufus</Hyperlink>.
 			<LineBreak />
 			<LineBreak />
-			To use it, provide the path to an original Windows 10 or 11 ISO file, and specify the destination for the new ISO file. For best results, the ISO should be the same or a later version to the affected versions of Windows needing rescue.
-			<LineBreak />
-			<LineBreak />
-			<Span FontWeight="Medium">This software is provided "as is" and without any express or implied warranties, including, without limitation, the implied warranties of merchantability and fitness for a particular purpose. Use of this software is at your own risk.</Span>
+			Provide the path to an original Windows installation ISO file, and specify the destination for the new ISO file. The ISO should be the same or greater version to the affected versions of Windows needing rescue. For further instructions, visit <Hyperlink x:Name="btnUnstrike">legacyupdate.net/unstrike</Hyperlink>.
 		</TextBlock>
 
 		<StackPanel Orientation="Vertical" Margin="15, 0">
@@ -165,7 +168,7 @@ function Show-Dialog {
 
 			<TextBlock FontWeight="SemiBold">Destination ISO:</TextBlock>
 
-			<Grid Margin="0, 5, 0, 15">
+			<Grid Margin="0, 5, 0, 0">
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="*" />
 					<ColumnDefinition Width="Auto" />
@@ -174,16 +177,15 @@ function Show-Dialog {
 				<TextBox x:Name="txtOutputISO" Grid.Column="0" Margin="0, 0, 10, 0" />
 				<Button x:Name="btnBrowseOutput" Grid.Column="1" Width="75">Browse</Button>
 			</Grid>
-
-			<ProgressBar x:Name="progressBar" Height="18" Margin="0, 10" />
-			<TextBlock x:Name="txtStatus" TextAlignment="Center">Idle</TextBlock>
 		</StackPanel>
 
-		<Canvas Height="50" Margin="0, 15, 0, 0">
-			<Line X1="0" Y1="0" X2="500" Y2="0" Stroke="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}" StrokeThickness="0.5" />
+		<TextBlock Margin="15" TextWrapping="Wrap" FontWeight="Medium">
+			This software is provided "as is" and without any express or implied warranties, including, without limitation, the implied warranties of merchantability and fitness for a particular purpose. Use of this software is at your own risk.
+		</TextBlock>
 
-			<Rectangle Width="500" Height="50" Fill="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
+		<Line X2="500" Stroke="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}" StrokeThickness="1" />
 
+		<Canvas Height="50" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
 			<Grid Width="455" Height="20" Canvas.Left="15" Canvas.Top="15">
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" />
@@ -193,10 +195,10 @@ function Show-Dialog {
 				</Grid.ColumnDefinitions>
 
 				<TextBlock Grid.Column="0">
-					Unstrike 1.0 - <Hyperlink x:Name="btnLegacyUpdate">legacyupdate.net</Hyperlink>
+					Unstrike 1.0.1 - <Hyperlink x:Name="btnLegacyUpdate">legacyupdate.net</Hyperlink>
 				</TextBlock>
 
-				<Button x:Name="btnOK" Grid.Column="2" Width="75" Margin="0, 0, 10, 0">OK</Button>
+				<Button x:Name="btnBuild" Grid.Column="2" Width="75" Margin="0, 0, 10, 0">Build</Button>
 				<Button x:Name="btnCancel" Grid.Column="3" Width="75">Cancel</Button>
 			</Grid>
 		</Canvas>
@@ -204,21 +206,25 @@ function Show-Dialog {
 </Window>
 "@
 
-	$reader = (New-Object System.Xml.XmlNodeReader $xaml)
+	$reader = New-Object System.Xml.XmlNodeReader $xaml
 	$Window = [Windows.Markup.XamlReader]::Load($reader)
 
 	$btnBrowseInput = $Window.FindName("btnBrowseInput")
 	$btnBrowseOutput = $Window.FindName("btnBrowseOutput")
-	$btnOK = $Window.FindName("btnOK")
+	$btnBuild = $Window.FindName("btnBuild")
 	$btnCancel = $Window.FindName("btnCancel")
 	$txtInputISO = $Window.FindName("txtInputISO")
 	$txtOutputISO = $Window.FindName("txtOutputISO")
-	$txtStatus = $Window.FindName("txtStatus")
-	$progressBar = $Window.FindName("progressBar")
 	$btnRufus = $Window.FindName("btnRufus")
 	$btnLegacyUpdate = $Window.FindName("btnLegacyUpdate")
+	$btnUnstrike = $Window.FindName("btnUnstrike")
 
-	$script:StatusLabel = $txtStatus
+	$script:Window = $Window
+
+	$Window.Add_Closing({
+		Remove-TempFiles
+		[System.Windows.Threading.Dispatcher]::ExitAllFrames()
+	})
 
 	$btnBrowseInput.Add_Click({
 		$openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
@@ -236,23 +242,22 @@ function Show-Dialog {
 		}
 	})
 
-	$btnOK.Add_Click({
+	$btnBuild.Add_Click({
 		$Window.IsEnabled = $false
-		$progressBar.IsIndeterminate = $true
-
 		Create-RescueImage -InputISO $txtInputISO.Text -OutputISO $txtOutputISO.Text
-
 		$Window.IsEnabled = $true
-		$progressBar.IsIndeterminate = $false
 	})
 
 	$btnCancel.Add_Click({
 		$Window.Close()
-		[System.Windows.Threading.Dispatcher]::ExitAllFrames()
 	})
 
 	$btnRufus.Add_Click({
 		Start-Process "https://rufus.ie/"
+	})
+
+	$btnUnstrike.Add_Click({
+		Start-Process "https://legacyupdate.net/unstrike"
 	})
 
 	$btnLegacyUpdate.Add_Click({
@@ -260,22 +265,43 @@ function Show-Dialog {
 	})
 
 	$Window.Show()
-	Write-Output "Unstrike started"
+	Write-Host "Unstrike started"
 	[System.Windows.Threading.Dispatcher]::Run()
+	Write-Host "Script ended"
 }
 
 function Set-Status {
 	Param(
-		[string]$Text
+		[string]$Text,
+		[int]$Progress = 5
 	)
 
-	Write-Output "$Text"
+	$script:Progress += $Progress
+	Write-Host "$script:Progress%:`t$Text"
+	Write-Progress -Activity Unstrike -Status $Text -PercentComplete $script:Progress
+}
 
-	if ($script:StatusLabel -ne $null) {
-		$script:StatusLabel.Dispatcher.Invoke({
-			$script:StatusLabel.Text = $Text
-		})
+function Show-Error {
+	Param(
+		[string]$Text,
+		[bool]$IsFatal = $false
+	)
+
+	Set-Status -Text $Text
+
+	$icon = if ($IsFatal) {
+		[System.Windows.MessageBoxImage]::Error
+	} else {
+		[System.Windows.MessageBoxImage]::Warning
 	}
+
+	if ($script:Window -eq $null) {
+		[System.Windows.MessageBox]::Show($Text, "Unstrike", [System.Windows.MessageBoxButton]::OK, $icon)
+	} else {
+		[System.Windows.MessageBox]::Show($script:Window, $Text, "Unstrike", [System.Windows.MessageBoxButton]::OK, $icon)
+	}
+
+	Write-Progress -Activity Unstrike -Complete
 }
 
 function Create-RescueImage {
@@ -284,54 +310,38 @@ function Create-RescueImage {
 		[string]$OutputISO
 	)
 
-	Remove-TempFiles
+	$script:Progress = 0
 
 	Set-Status -Text "Processing..."
 
 	# Validate inputs
-	if ($InputISO -eq "") {
-		Set-Status -Text "Please provide an input path."
+	if (-not $InputISO) {
+		Show-Error -Text "Please provide an input path."
 		return
 	}
-
-	if ($OutputISO -eq "") {
-		Set-Status -Text "Please provide an output path."
+	if (-not $OutputISO) {
+		Show-Error -Text "Please provide an output path."
 		return
 	}
 
 	if (-not (Test-Path (Split-Path $InputISO))) {
-		Set-Status -Text "Invalid input path."
+		Show-Error -Text "Invalid input path."
 		return
 	}
 
 	if (-not (Test-Path (Split-Path $OutputISO))) {
-		Set-Status -Text "Invalid output path."
+		Show-Error -Text "Invalid output path."
 		return
 	}
 
 	if (Test-Path $OutputISO) {
-		Set-Status -Text "Output ISO already exists."
-		return
-	}
+		Set-Status -Text "Deleting existing output file..."
+		Remove-Item -Path $OutputISO -Force
 
-	# Check OS compatibility
-	$osVersion = [System.Environment]::OSVersion.Version
-	if (-not $env:WINDIR -or $osVersion.Major -ne 10) {
-		Set-Status -Text "This tool requires Windows 10."
-		return
-	}
-
-	if (-not (Test-Path "$env:WINDIR\SysWOW64")) {
-		Set-Status -Text "This tool only supports 64-bit Windows."
-		return
-	}
-
-	# Check for mkisofs.exe
-	Set-Location -Path $PSScriptRoot
-	$mkisofs = Join-Path -Path $PSScriptRoot -ChildPath "mkisofs.exe"
-	if (-not (Test-Path $mkisofs)) {
-		Set-Status -Text "mkisofs.exe not found. Make sure to extract all files before running the script."
-		return
+		if (Test-Path $OutputISO) {
+			Show-Error -Text "Failed to delete existing output file."
+			return
+		}
 	}
 
 	# Clean up temp files in case a previous run failed
@@ -344,23 +354,14 @@ function Create-RescueImage {
 
 	# Create a temp folder
 	Set-Status -Text "Creating temporary directory..."
-	$tempPath = Join-Path -Path $env:TEMP -ChildPath "UnstrikeTemp"
-	if (Test-Path $tempPath) {
-		Remove-TempFiles -InputISO $InputISO
-		Remove-Item -Path $tempPath -Recurse
-	}
-	$tempFolder = New-Item -ItemType Directory -Path $tempPath
+	$tempPath = "$env:TEMP\UnstrikeTemp"
+	New-Item -ItemType Directory -Path $tempPath
+	New-Item -ItemType Directory -Path "$tempPath\sources"
 
 	# Copy files to temp folder
-	foreach ($item in @("boot", "efi", "sources", "bootmgr", "bootmgr.efi")) {
-		Set-Status -Text "Extracting $item..."
-
-		if (Test-Path -Path "$driveLetter\$item" -PathType Container) {
-			New-Item -ItemType Directory -Path (Join-Path -Path $tempFolder -ChildPath $item)
-			Copy-Item -Path "$driveLetter\$item\*" -Destination (Join-Path -Path $tempFolder -ChildPath $item) -Recurse -Exclude install.wim,bootfix.bin
-		} else {
-			Copy-Item -Path "$driveLetter\$item" -Destination $tempFolder
-		}
+	foreach ($item in @("boot", "efi", "sources\boot.wim", "bootmgr", "bootmgr.efi")) {
+		Set-Status -Text "Copying $item..."
+		Copy-Item -Path "$driveLetter\$item" -Destination "$tempPath\$item" -Recurse -Exclude bootfix.bin
 	}
 
 	# Unmount ISO
@@ -368,42 +369,36 @@ function Create-RescueImage {
 	Dismount-DiskImage -ImagePath $InputISO
 
 	# Make boot.wim read-write
-	$bootWim = Join-Path -Path $tempFolder -ChildPath "sources\boot.wim"
-	$bootWimItem = Get-ChildItem -Path $bootWim
-	$bootWimItem.Attributes = $bootWimItem.Attributes -band ([System.IO.FileAttributes]::ReadOnly -bxor 0xFFFFFFFF)
+	$bootWim = "$tempPath\sources\boot.wim"
+	(Get-ChildItem -Path $bootWim).Attributes = "Normal"
 
 	# Mount boot.wim
 	Set-Status -Text "Mounting boot.wim..."
-	$mountDir = Join-Path -Path $env:TEMP -ChildPath "UnstrikeBootWim"
+	$mountDir = "$env:TEMP\UnstrikeBootWim"
 	New-Item -ItemType Directory -Path $mountDir
-	& dism /Mount-Wim /WimFile:"$bootWim" /index:2 /MountDir:"$mountDir"
+	dism /Mount-Wim /WimFile:"$bootWim" /index:2 /MountDir:"$mountDir"
 
 	# Check error
 	if (-not $?) {
-		Remove-TempFiles
-		Set-Status -Text "Failed to mount boot.wim."
+		Show-Error -Text "Failed to mount boot.wim."
 		return
 	}
 
 	# Write the script and set it to run on boot
-	Set-Content -Path "$mountDir\Windows\System32\unstrike.cmd" -Value $batchFile
-
-	$winpeshlContent = @"
-[LaunchApp]
-AppPath = %SYSTEMDRIVE%\Windows\System32\unstrike.cmd
-"@
-	Set-Content -Path (Join-Path -Path $mountDir -ChildPath "Windows\System32\winpeshl.ini") -Value $winpeshlContent
+	Set-Status -Text "Writing rescue script..."
+	Set-Content -Path "$mountDir\unstrike.cmd" -Value $batchFile
+	Set-Content -Path "$mountDir\Windows\System32\winpeshl.ini" -Value $winpeshlIni
 
 	# Copy choice.exe from running system
-	Copy-Item -Path "$env:SystemRoot\System32\choice.exe" -Destination (Join-Path -Path $mountDir -ChildPath "Windows\System32")
+	Copy-Item -Path "$env:WINDIR\System32\choice.exe" -Destination "$mountDir\Windows\System32"
 
 	# Unmount and commit boot.wim
 	Set-Status -Text "Unmounting boot.wim..."
-	& dism /Unmount-Wim /MountDir:"$mountDir" /Commit
+	dism /Unmount-Wim /MountDir:"$mountDir" /Commit
 
 	# Check error
 	if (-not $?) {
-		Set-Status -Text "Failed to unmount boot.wim."
+		Show-Error -Text "Failed to unmount boot.wim."
 		return
 	}
 
@@ -411,17 +406,16 @@ AppPath = %SYSTEMDRIVE%\Windows\System32\unstrike.cmd
 
 	# Create the new ISO
 	Set-Status -Text "Creating ISO..."
-	& $mkisofs -iso-level 4 -l -R -udf -D -b boot/etfsboot.com -no-emul-boot -boot-load-size 8 -hide boot.catalog -eltorito-alt-boot -no-emul-boot -b efi/microsoft/boot/efisys_noprompt.bin -o "$outputISO" "$tempFolder"
+	& $mkisofs -quiet -iso-level 4 -l -R -udf -D -b boot/etfsboot.com -no-emul-boot -boot-load-size 8 -hide boot.catalog -eltorito-alt-boot -no-emul-boot -b efi/microsoft/boot/efisys_noprompt.bin -o "$outputISO" "$tempPath"
 
 	# Clean up temp folder
 	Remove-TempFiles -InputISO $InputISO
 
 	# Open in Explorer
-	Set-Status -Text "Done"
-	Start-Process -FilePath "explorer.exe" -ArgumentList "/select,`"$outputISO`""
-	$job | Stop-Job
+	Set-Status -Text Done
+	Write-Progress -Activity Unstrike -Complete
+	Start-Process explorer.exe -ArgumentList "/select,`"$outputISO`""
 	[System.Windows.Threading.Dispatcher]::ExitAllFrames()
-	Exit
 }
 
 function Remove-TempFiles {
@@ -431,11 +425,11 @@ function Remove-TempFiles {
 
 	Set-Status -Text "Cleaning up..."
 
-	$tempFolder = Join-Path -Path $env:TEMP -ChildPath "UnstrikeTemp"
-	$mountDir = Join-Path -Path $env:TEMP -ChildPath "UnstrikeBootWim"
+	$tempPath = "$env:TEMP\UnstrikeTemp"
+	$mountDir = "$env:TEMP\UnstrikeBootWim"
 
 	# Unmount ISO if still mounted
-	if ($InputISO -ne $null -and $InputISO -ne "" -and (Test-Path $InputISO)) {
+	if ($InputISO -and (Get-DiskImage -ImagePath $InputISO)) {
 		Set-Status -Text "Unmounting ISO..."
 		Dismount-DiskImage -ImagePath $InputISO
 	}
@@ -443,14 +437,14 @@ function Remove-TempFiles {
 	# Unmount and discard boot.wim
 	if (Test-Path $mountDir) {
 		Set-Status -Text "Unmounting boot.wim..."
-		& dism /Unmount-Wim /MountDir:"$mountDir" /Discard
+		dism /Unmount-Wim /MountDir:"$mountDir" /Discard
 		Remove-Item -Path $mountDir -Recurse -Force
 	}
 
 	# Clean up temp folder
-	if (Test-Path $tempFolder) {
+	if (Test-Path $tempPath) {
 		Set-Status -Text "Cleaning up temp files..."
-		Remove-Item -Path $tempFolder -Recurse -Force
+		Remove-Item -Path $tempPath -Recurse -Force
 	}
 }
 
@@ -458,7 +452,25 @@ function Remove-TempFiles {
 $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) {
-	Start-Process -FilePath "powershell.exe" -Verb runas -ArgumentList "-File `"$PSCommandPath`""
+	Start-Process -FilePath powershell.exe -Verb runas -ArgumentList "-File `"$PSCommandPath`""
+	Exit
+}
+
+# Check OS compatibility
+if (-not $env:WINDIR -or [System.Environment]::OSVersion.Version.Major -ne 10) {
+	Show-Error -IsFatal $true -Text "This tool requires at least Windows 10."
+	Exit
+}
+
+if (-not (Test-Path "$env:WINDIR\SysWOW64")) {
+	Show-Error -IsFatal $true -Text "This tool requires x64 Windows."
+	Exit
+}
+
+# Check for mkisofs.exe
+Set-Location -Path $PSScriptRoot
+if (-not (Test-Path $mkisofs)) {
+	Show-Error -IsFatal $true -Text "mkisofs.exe not found. Make sure to extract all files before running the script."
 	Exit
 }
 
@@ -466,8 +478,8 @@ Show-Dialog
 # SIG # Begin signature block
 # MIIRRgYJKoZIhvcNAQcCoIIRNzCCETMCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDHnwscgfD94v+f
-# SD5qVfHQbZ57QAg8/ZNkSYdUkHyqnqCCDYAwgga5MIIEoaADAgECAhEAmaOACiZV
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCC+9mxJmjvlmD7I
+# RlrqxHSxqloP+6BnAFdo+tXWdLdqcKCCDYAwgga5MIIEoaADAgECAhEAmaOACiZV
 # O2Wr3G6EprPqOTANBgkqhkiG9w0BAQwFADCBgDELMAkGA1UEBhMCUEwxIjAgBgNV
 # BAoTGVVuaXpldG8gVGVjaG5vbG9naWVzIFMuQS4xJzAlBgNVBAsTHkNlcnR1bSBD
 # ZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTEkMCIGA1UEAxMbQ2VydHVtIFRydXN0ZWQg
@@ -544,17 +556,17 @@ Show-Dialog
 # BAMTG0NlcnR1bSBDb2RlIFNpZ25pbmcgMjAyMSBDQQIQD3Ey8ryELmCitwfJTY0i
 # STANBglghkgBZQMEAgEFAKCBhDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAAMBkG
 # CSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgorBgEE
-# AYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDmSyNoHc6i9HkOEUgdKAxzMM/bHvw6gL+3
-# Y5op7U982jANBgkqhkiG9w0BAQEFAASCAgB5x24sqoZZehzTbXoX/c9t8x5q2XhL
-# AwNPHfp/YNC9OpVNpPDUfxtR1bBIb3nJZghVHP/L8/b4Xb35KZZjcNxkjRmbqhRr
-# VCVIQ2cA+/zfKJm6ICzUGxAsO/mr/PNJxtiVTSrkBR68aA9QmIbPlHSntYvGdyG7
-# NgQbxc13XK435W62y6ZRbF34HgsStCeU158zkCx4g5WmnCvEZKEXUqavmizEOczK
-# 8Sy4lqE4q4zBYi7gDP4s4svpKo1ghBwf6rLaowrxzJIJk9Kg0xEOhAZ/t4yM1Mr4
-# ScjCwOyGmoUoaRwqLzui/15IJ9eMP2Af9pCgtWZdH4jAaEih7y9ivLsx4hVIMbY+
-# C0+iKVjadIJZYZQqU9v52rReoBCJfWy+acktpm1VhWpgRuCOsamqxJenGNHaCzmF
-# Ymf5/UkHmfN5KenCrT7/gJ/EZ7hKNTrdGpKqWaU9rhLRmTp78UF5USaGzj+76apZ
-# MhycRKW3/CG9ducaU91T4auSHp8QantKDoVREglc7iq8h2tH42OVfRi4VMwlRXBZ
-# XY1P0T73ujNrIg6SwpysAGPVmFzw75MTovZYx927YsaaJ1GYRcUYSRhBeR3MmdrI
-# +Y/bcUSCZDXF6esDDa0qFrS8jK/52c5e7zVhmGye5QM1SfB4oNk7f/Dw2BqJED9K
-# IPLEWnvzuQ6Wcw==
+# AYI3AgEVMC8GCSqGSIb3DQEJBDEiBCBNpPs3PNVOXD8ZOh49R4M495LfpEqjifsb
+# FHuGE0DPHTANBgkqhkiG9w0BAQEFAASCAgBPV0HyNibL7h91vFbMrWq4dt9J+Ht/
+# nAijFnRbWZFqR8I0BdeFld4hqS/EzS+uQPdBN26LSCUWEFU42Zf5LjBgeyaknnhe
+# UdBq71enz5pHrkz/xqEz2620AU2PzRTDDdim67LQiILHRMfd+tgmuqe6wzIbgqk6
+# TM+nyKDMU1rxIT4AL1thkOX2mO6Sb+uCMaOndWjgsdpMHkDbc53+2vonaC0mwztC
+# 2ibUN0kNbBS2/gNB7nyt8yyEEgcOcNS7t8X9Ns23kVYQytFNBIu3AI3eIm/do8Ac
+# vo/tOCCJKuMZHo8L9tIXVowWK7uZTzxfoa9qzijfllG3/gqF/nZfhpz2UMZoyMXu
+# FSaHlD+jqxiFkZxobtymkFW9Dxo4iYwIq0tuZ1DYEan4GrmzS4J0rXmZ2pAOC+l4
+# r/PWC6WgYoeB93pZ0xQJXEAhovFYaKGj5IFO4Sqd42wVwYfIzRFgw8Xz1PlTdweS
+# fOUh2WNwVzmXyrEaOknNRB1dpIfA6fjXGGicYBKl2uS8XHZR9phXR69t/9jJ1Lm+
+# wkpp+xPdp028XTUSacMOeL23BYo+vAQdZQU4IQUS9akZyACzWEhu1nlPkIVOEkoc
+# EsoN4jnjsgCEhm1Yhwpo+S9ctP/psdet3cDlI4ooxUehh+pgbJhjC7TpGTdv1qEJ
+# rcRycZ47qMm2nA==
 # SIG # End signature block
